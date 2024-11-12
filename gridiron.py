@@ -112,25 +112,24 @@ class Gridiron:
         If all players of a team have run net_input(), half_update can be used to skip those calculations for the next.
         """
 
+        def vision_to_obj(v, d):
+            v_dot_t = (v[0] * d[0]) + (v[1] * d[1])
+            v_cross_t = (v[0] * d[1]) - (v[1] * d[0])
+            angle_between = math.degrees(math.atan2(v_cross_t, v_dot_t))
+            return angle_between / 180
+
         vision_angle = math.radians(player.angle)
-        v = (math.cos(vision_angle), -math.sin(vision_angle))
+        vision = (math.cos(vision_angle), -math.sin(vision_angle))
 
         for other in opposing_team.players:
-            t = (other.rect.centerx - player.rect.centerx, other.rect.centery - player.rect.centery)
+            diff = (other.rect.centerx - player.rect.centerx, other.rect.centery - player.rect.centery)
             if not half_update:
-                magnitude = math.sqrt(t[0] ** 2 + t[1] ** 2) / self.max_dist
+                magnitude = math.sqrt(diff[0] ** 2 + diff[1] ** 2) / self.max_dist
                 player.net_input[2 * other.player_id] = magnitude
                 other.net_input[2 * player.player_id] = magnitude
-
-            v_dot_t = (v[0] * t[0]) + (v[1] * t[1])
-            v_cross_t = (v[0] * t[1]) - (v[1] * t[0])
-            angle_between = math.degrees(math.atan2(v_cross_t, v_dot_t))
-            player.net_input[2 * other.player_id + 1] = angle_between / 180
+            player.net_input[2 * other.player_id + 1] = vision_to_obj(vision, diff)
 
         for corner in range(len(self.bounds)):
-            t = (self.bounds[corner] - player.rect.centerx, self.score_endzone - player.rect.centery)
-            player.net_input[-2 * (2 - corner)] = math.sqrt(t[0] ** 2 + t[1] ** 2) / self.max_dist
-            v_dot_t = (v[0] * t[0]) + (v[1] * t[1])
-            v_cross_t = (v[0] * t[1]) - (v[1] * t[0])
-            angle_between = math.degrees(math.atan2(v_cross_t, v_dot_t))
-            player.net_input[-2 * (2 - corner) + 1] = angle_between / 180
+            diff = (self.bounds[corner] - player.rect.centerx, self.score_endzone - player.rect.centery)
+            player.net_input[-2 * (2 - corner)] = math.sqrt(diff[0] ** 2 + diff[1] ** 2) / self.max_dist
+            player.net_input[-2 * (2 - corner) + 1] = vision_to_obj(vision, diff)
