@@ -1,5 +1,8 @@
 import pygame
 
+WHITE = (255, 255, 255)
+BLUE = (0, 0, 255)
+RED = (255, 0, 0)
 
 def draw_field(left_bound: float, right_bound: float, screen: pygame.Surface):
     """
@@ -12,37 +15,39 @@ def draw_field(left_bound: float, right_bound: float, screen: pygame.Surface):
     height = screen.get_height()
 
     pixels_per_yard = height / 120
-    font = pygame.font.Font(pygame.font.get_default_font(), 20)
+    ten_yards = 10 * pixels_per_yard
+    font = pygame.font.Font(pygame.font.get_default_font(), 25)
+
 
     # Yard markers
     for i in range(10, 100, 10):
         draw_line_from_yard(i, (left_bound, right_bound), screen)
         if i <= 50:
-            number = pygame.transform.rotate(font.render(f"{i}", True, (255, 255, 255)), 90)
+            number = pygame.transform.rotate(font.render(f"{i}", True, WHITE), 90)
         else:
-            number = pygame.transform.rotate(font.render(f"{60 - (i - 40)}", True, (255, 255, 255)), 90)
+            number = pygame.transform.rotate(font.render(f"{-i+100}", True, WHITE), 90)
 
-        screen.blit(number, (left_bound, (i + 10) * pixels_per_yard))
+        screen.blit(number, (left_bound, (i + 7.5) * pixels_per_yard))
 
-    # End zones
-    surface = pygame.Surface((right_bound - left_bound, 10 * pixels_per_yard))
-    surface.fill((255, 0, 0))
+    # Defense End Zone
+    surface = pygame.Surface((right_bound - left_bound, ten_yards))
+    surface.fill(BLUE)
     screen.blit(surface, (left_bound, 0))
-    pygame.draw.line(screen, (255, 255, 255), (left_bound, 10 * pixels_per_yard), (right_bound, 10 * pixels_per_yard),
-                     2)
-    screen.blit(surface, (left_bound, 110 * pixels_per_yard))
-    pygame.draw.line(screen, (255, 255, 255), (left_bound, 110 * pixels_per_yard), (right_bound, 110 * pixels_per_yard),
-                     2)
+    pygame.draw.line(screen, WHITE, (left_bound, ten_yards), (right_bound, ten_yards),2)
+
+    # OFFENSE END ZONE
+    surface.fill(RED)
+    screen.blit(surface, (left_bound, 11*ten_yards))
+    pygame.draw.line(screen, WHITE, (left_bound, 11*ten_yards), (right_bound, 11*ten_yards),2)
 
     # Bounds
     surface = pygame.Surface((10, height))
-    surface.fill((255, 255, 255))
+    surface.fill(WHITE)
     screen.blit(surface, (left_bound - 10, 0))
     screen.blit(surface, (right_bound, 0))
 
 
-def draw_line_from_yard(yard: int, bounds: tuple[float, float], screen: pygame.Surface,
-                        offset=10, color=(255, 255, 255)):
+def draw_line_from_yard(yard: int, bounds: tuple[float, float], screen: pygame.Surface, offset=10, color=WHITE):
     """
     Draws a line horizontally across the field at the given yardage
 
