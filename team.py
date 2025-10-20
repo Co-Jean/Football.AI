@@ -1,5 +1,5 @@
 import pygame
-import field
+from field import Field
 from player import Player
 import random
 
@@ -14,7 +14,7 @@ class Team:
     Object for controlling a team of players
     """
     def __init__(self, positions: dict, stats: dict, color: str):
-        self.players = pygame.sprite.RenderPlain()
+        self.players = pygame.sprite.Group()
         player_id = 0
         for role, num_of in positions.items():
             for p in range(num_of):
@@ -29,16 +29,16 @@ class Team:
         for player in self.players:
             player.network.mutate()
 
-    def set_team(self, x_bounds, y_bound, starting_angle):
+    def set_team(self, playing_field: Field, y_bound, starting_angle):
         """
         PLace a teams players before the start of a play.
 
-        :param x_bounds: x coordinate bounds for the field
+        :param playing_field: field object of game
         :param y_bound: y coordinate for where players may be placed
         :param starting_angle: angle players on the team face on play start
         """
         for player in self.players:
-            x = random.uniform(0, (x_bounds[1] - x_bounds[0]) / 2) + 1.25 * x_bounds[0]
+            x = random.uniform(0, (playing_field.right_bound - playing_field.left_bound) / 2) + 1.25 * playing_field.left_bound
             player.rect.center = (x, y_bound)
             player.angle = starting_angle
             player.image = player.sprite
@@ -53,14 +53,13 @@ class Offense(Team):
     def __init__(self):
         super().__init__(OFFENSE_POSITIONS, OFFENSE_STATS, "Red")
 
-    def set_offense(self, x_bounds: tuple[float, float], height: float):
+    def set_offense(self, playing_field: Field):
         """
         sets the offense by calling Team.set_team() with proper parameters
 
-        :param x_bounds: x coordinate bounds for the field
-        :param height: height of the field/window in pixels
+        :param playing_field: field object team plays on
         """
-        self.set_team(x_bounds, field.yard_to_pixel(80, height), 90)
+        self.set_team(playing_field, playing_field.yard_to_pixel(80), 90)
 
 
 class Defense(Team):
@@ -70,11 +69,10 @@ class Defense(Team):
     def __init__(self):
         super().__init__(DEFENSE_POSITIONS, DEFENSE_STATS, "Blue")
 
-    def set_defense(self, x_bounds: tuple[float, float], height: float):
+    def set_defense(self, playing_field: Field):
         """
         sets the defense by calling Team.set_team() with proper parameters
 
-        :param x_bounds: x coordinate bounds for the field
-        :param height: height of the field/window in pixels
+        :param playing_field: field object team plays on
         """
-        self.set_team(x_bounds, field.yard_to_pixel(20, height), 270)
+        self.set_team(playing_field, playing_field.yard_to_pixel(20), 270)

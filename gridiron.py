@@ -1,5 +1,5 @@
 from team import *
-import field
+from field import *
 from player import *
 
 
@@ -17,12 +17,7 @@ class Gridiron:
         self.defense = defense
 
         # Field bounds and coordinates
-        self.bounds = bounds
-        self.height = screen.get_height()
-        self.score_endzone = field.yard_to_pixel(10, self.height, offset=0)
-        saftey_endzone = field.yard_to_pixel(110, self.height, offset=0)
-        self.max_dist = math.sqrt((self.bounds[1] - self.bounds[0]) ** 2 + (self.score_endzone - saftey_endzone) ** 2)
-        self.scrimmage = field.yard_to_pixel(70, self.height)
+        self.field = Field(bounds, screen.get_height())
 
         # Game state
         self.in_play = False
@@ -35,25 +30,29 @@ class Gridiron:
 
         This will only render updates if the Gridiron object's display attribute is True
         """
-        offense_players = self.offense.players
-        defensive_players = self.defense.players
         if self.in_play:
             # allow teams to update
+
+            self.update_net_inputs()
+            if self.display:
+                self.display_net_input()
+
             self.update_team(self.offense, self.defense)
-            self.update_team(self.defense, self.offense, half_update=True)
+            # self.update_team(self.defense, self.offense, half_update=True)
         else:
             # allow teams to place themselves and flip the self.in_play flag
-            self.offense.set_offense(self.bounds, self.height)
-            self.defense.set_defense(self.bounds, self.height)
+            self.offense.set_offense(self.field)
+            self.defense.set_defense(self.field)
             self.in_play = True
 
         if self.display:
             # render players and line of self.scrimmage
-            field.draw_line_from_pixel(self.scrimmage, self.bounds, self.screen, color=(0, 0, 255))
-            offense_players.draw(self.screen)
-            defensive_players.draw(self.screen)
+            self.field.draw_field(self.screen)
+            self.offense.players.draw(self.screen)
+            self.defense.players.draw(self.screen)
 
-    def update_team(self, update_team: Offense | Defense, opposing_team: Offense | Defense, half_update=False):
+
+    def update_team(self, update_team: Offense | Defense, opposing_team: Offense | Defense):
         """
         Updates each player in the team by checking if they contact the given opposing team.
 
@@ -64,17 +63,15 @@ class Gridiron:
 
         :param update_team: team whose players will be updated
         :param opposing_team: team is opposing the team being updated
-        :param half_update: whether to use the half_update argument of gridiron.net_input()
         """
         c = pygame.sprite.collide_rect_ratio(0.80)
         collided = pygame.sprite.groupcollide(update_team.players, opposing_team.players, False, False, collided=c)
-
         for player in update_team.players:
-            self.net_input(player, opposing_team, half_update)
 
             try:
                 if player.has_ball:
-                    self.check_game_state(player, collided)
+                    # self.check_game_state(player, collided)
+                    pass
 
                 external_force = [0, 0]
                 for opponent in collided[player]:
@@ -83,9 +80,12 @@ class Gridiron:
                         x, y = get_movement_vector(opponent.strength, opponent.angle)
                         external_force[0] += 2 * x
                         external_force[1] += 2 * y
-                player.update(self.bounds, self.height, external_force=external_force)
+                player.update(self.field, self.field.height, external_force=external_force)
             except KeyError:
-                player.update(self.bounds, self.height)
+                player.update(self.field, self.field.height)
+
+            if self.display:
+                player.get_corners(self.screen)
 
     def check_game_state(self, player: Player, collisions: dict):
         """
@@ -96,40 +96,45 @@ class Gridiron:
         """
         if player in collisions.keys():
             self.in_play = False
-        if player.rect.centery <= self.score_endzone:
+        if player.rect.centery <= self.field.score_endzone:
             self.in_play = False
             self.points += 7
 
-    def net_input(self, player: Player, opposing_team: Offense | Defense, half_update=False):
+
+    def update_net_inputs(self):
         """
-        Update a player's input attribute for Network.feedfoward()
-
-        :param player: the player updating their neural network input
-        :param opposing_team: the team opposing the giving player
-        :param half_update: whether to run the function as a half update, when net_input() is run.
-        One component of a player's network input is their distance to another opposing player.
-        Players will share this with the opposing player as it will come out to the same number.
-        If all players of a team have run net_input(), half_update can be used to skip those calculations for the next.
+        Update all player's input attribute for Network.feedfoward()
         """
+        bounds = [self.field.left_bound, self.field.right_bound]
 
-        def vision_to_obj(v, d):
-            v_dot_t = (v[0] * d[0]) + (v[1] * d[1])
-            v_cross_t = (v[0] * d[1]) - (v[1] * d[0])
-            angle_between = math.degrees(math.atan2(v_cross_t, v_dot_t))
-            return angle_between / 180
+        for off in self.offense.players:
+            paired_def = None
+            for defe in self.defense.players:
+                off.update_target_input(defe.rect.center, defe.player_id, self.field.max_dist)
+                defe.update_target_input(off.rect.center, off.player_id, self.field.max_dist)
+                if off.player_id == defe.player_id:
+                    paired_def = defe
 
-        vision_angle = math.radians(player.angle)
-        vision = (math.cos(vision_angle), -math.sin(vision_angle))
+            for corner in range(len(bounds)):
+                idx = -(2 - corner)
+                off.update_target_input((bounds[corner], self.field.score_endzone), idx, self.field.max_dist)
+                paired_def.update_target_input((bounds[corner], self.field.score_endzone), idx, self.field.max_dist)
 
-        for other in opposing_team.players:
-            diff = (other.rect.centerx - player.rect.centerx, other.rect.centery - player.rect.centery)
-            if not half_update:
-                magnitude = math.sqrt(diff[0] ** 2 + diff[1] ** 2) / self.max_dist
-                player.net_input[2 * other.player_id] = magnitude
-                other.net_input[2 * player.player_id] = magnitude
-            player.net_input[2 * other.player_id + 1] = vision_to_obj(vision, diff)
 
-        for corner in range(len(self.bounds)):
-            diff = (self.bounds[corner] - player.rect.centerx, self.score_endzone - player.rect.centery)
-            player.net_input[-2 * (2 - corner)] = math.sqrt(diff[0] ** 2 + diff[1] ** 2) / self.max_dist
-            player.net_input[-2 * (2 - corner) + 1] = vision_to_obj(vision, diff)
+    def display_net_input(self):
+        keys = pygame.key.get_pressed()
+        if keys[pygame.K_o]:
+            display_team = self.offense.players
+        elif keys[pygame.K_d]:
+            display_team = self.defense.players
+        else:
+            return
+
+        for player in display_team:
+            for i in range(0, len(player.net_input), 2):
+                radian = math.radians(player.angle) - math.radians(player.net_input[i+1]*180)
+                dis = player.net_input[i] * self.field.max_dist
+                x = math.cos(radian) * dis
+                y = math.sin(radian) * -dis
+                xy = player.rect.center
+                pygame.draw.line(self.screen, (255, 0, 0), xy, (xy[0]+x, xy[1]+y), 2)

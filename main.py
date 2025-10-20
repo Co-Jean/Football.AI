@@ -29,7 +29,7 @@ def main():
     active_offense = []
     active_defense = []
 
-    for i in range(350):
+    for i in range(200):
         active_offense.append(team.Offense())
         active_defense.append(team.Defense())
 
@@ -50,7 +50,6 @@ def main():
 
         # Draw field
         screen.blit(background, (0, 0))
-        field.draw_field(field_bounds[0], field_bounds[1], screen)
 
         # Fill Games
         if purge:
