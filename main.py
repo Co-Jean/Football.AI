@@ -15,15 +15,6 @@ def main():
     pygame.display.set_caption("FootballAI")
     clock = pygame.time.Clock()
 
-    # Background
-    background = pygame.Surface(screen.get_size())
-    background = background.convert()
-    background.fill((24, 150, 0))
-    screen.blit(background, (0, 0))
-
-    # Get Bounds
-    screen_size = screen.get_size()
-    field_bounds = (screen_size[0] / 4, screen_size[0] * 3 / 4)
 
     # Prep first gen teams
     active_offense = []
@@ -48,8 +39,6 @@ def main():
             if event.type == pygame.QUIT:
                 running = False
 
-        # Draw field
-        screen.blit(background, (0, 0))
 
         # Fill Games
         if purge:
@@ -66,7 +55,7 @@ def main():
             random.shuffle(active_defense)
 
             for o, d in zip(active_offense, active_defense):
-                active_games.append(gridiron.Gridiron(o, d, field_bounds, screen))
+                active_games.append(gridiron.Gridiron(o, d, screen))
 
             active_games[0].display = True
 

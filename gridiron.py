@@ -7,7 +7,7 @@ class Gridiron:
     """
     Object for controlling a game between two teams, an offense and defense
     """
-    def __init__(self, offense: Offense, defense: Defense, bounds: tuple[float, float], screen: pygame.Surface):
+    def __init__(self, offense: Offense, defense: Defense, screen: pygame.Surface):
         # Display
         self.screen = screen
         self.display = False
@@ -17,7 +17,7 @@ class Gridiron:
         self.defense = defense
 
         # Field bounds and coordinates
-        self.field = Field(bounds, screen.get_height())
+        self.field = Field(screen)
 
         # Game state
         self.in_play = False
@@ -47,7 +47,7 @@ class Gridiron:
 
         if self.display:
             # render players and line of self.scrimmage
-            self.field.draw_field(self.screen)
+            self.field.draw_field()
             self.offense.players.draw(self.screen)
             self.defense.players.draw(self.screen)
 
